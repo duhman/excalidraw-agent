@@ -39,10 +39,10 @@ echo "[3/12] Running Mermaid -> scene conversion"
     --pretty true
 )
 
-echo "[4/12] Linting generated scene"
+echo "[4/12] Linting generated scene (strict diagram checks)"
 (
   cd "$TMP_DIR"
-  node "$SCRIPT_DIR/scene_lint.mjs" --input "$TMP_DIR/generated.excalidraw"
+  node "$SCRIPT_DIR/scene_lint.mjs" --input "$TMP_DIR/generated.excalidraw" --strict-diagram true
 )
 
 echo "[5/12] Verifying linter catches invalid payload"

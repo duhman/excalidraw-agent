@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function parseArgs(argv) {
-  const args = { input: null };
+  const args = { input: null, strictDiagram: false };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     const next = argv[i + 1];
@@ -19,8 +19,17 @@ function parseArgs(argv) {
       i += 1;
       continue;
     }
+    if (arg === "--strict-diagram") {
+      if (next === "true") args.strictDiagram = true;
+      else if (next === "false") args.strictDiagram = false;
+      else throw new Error("--strict-diagram must be true or false");
+      i += 1;
+      continue;
+    }
     if (arg === "-h" || arg === "--help") {
-      process.stdout.write("Usage: node scripts/scene_lint.mjs --input <scene.excalidraw>\n");
+      process.stdout.write(
+        "Usage: node scripts/scene_lint.mjs --input <scene.excalidraw> --strict-diagram <true|false>\n",
+      );
       process.exit(0);
     }
     throw new Error(`Unknown argument: ${arg}`);
@@ -96,9 +105,14 @@ async function main() {
   const isInvisiblySmallElement = pickExport(excalidrawModule, "isInvisiblySmallElement") || fallbackInvisibleCheck;
 
   const seenIds = new Set();
+  const elementById = new Map();
   const duplicateIds = new Set();
   const danglingFiles = [];
   const tinyElements = [];
+  const unboundArrows = [];
+  const danglingBindings = [];
+  const textOverflow = [];
+  const uncontainedText = [];
 
   for (let i = 0; i < elements.length; i += 1) {
     const element = elements[i];
@@ -113,6 +127,7 @@ async function main() {
       duplicateIds.add(element.id);
     } else {
       seenIds.add(element.id);
+      elementById.set(element.id, element);
     }
 
     if (typeof element.type !== "string" || element.type.trim() === "") {
@@ -144,6 +159,75 @@ async function main() {
 
   if (tinyElements.length > 0) {
     warnings.push(`Invisibly small elements: ${tinyElements.join(", ")}`);
+  }
+
+  for (const element of elements) {
+    if (!element || typeof element !== "object") continue;
+
+    if (element.type === "arrow") {
+      if (!element.startBinding || !element.endBinding) {
+        unboundArrows.push(element.id || "unknown-arrow");
+      } else {
+        const startId = element.startBinding.elementId;
+        const endId = element.endBinding.elementId;
+        if (!elementById.has(startId) || !elementById.has(endId)) {
+          danglingBindings.push(
+            `${element.id || "unknown-arrow"} -> start:${startId || "?"} end:${endId || "?"}`,
+          );
+        }
+      }
+    }
+
+    if (element.type === "text" && typeof element.text === "string" && element.text.trim()) {
+      if (!element.containerId) {
+        uncontainedText.push(element.id || "unknown-text");
+        continue;
+      }
+      const container = elementById.get(element.containerId);
+      if (!container) {
+        errors.push(
+          `Text ${element.id || "unknown-text"} references missing container ${element.containerId}.`,
+        );
+        continue;
+      }
+
+      const containerWidth = Number(container.width ?? 0);
+      const containerHeight = Number(container.height ?? 0);
+      const textWidth = Number(element.width ?? 0);
+      const textHeight = Number(element.height ?? 0);
+      const padding = 12;
+      if (
+        containerWidth > 0 &&
+        containerHeight > 0 &&
+        (textWidth > containerWidth - padding || textHeight > containerHeight - padding)
+      ) {
+        textOverflow.push(
+          `${element.id || "unknown-text"} (${Math.round(textWidth)}x${Math.round(textHeight)}) > ${container.id} (${Math.round(containerWidth)}x${Math.round(containerHeight)})`,
+        );
+      }
+    }
+  }
+
+  if (unboundArrows.length > 0) {
+    const msg = `Arrows without start/end bindings: ${unboundArrows.join(", ")}`;
+    if (args.strictDiagram) errors.push(msg);
+    else warnings.push(msg);
+  }
+
+  if (danglingBindings.length > 0) {
+    errors.push(`Dangling arrow bindings: ${danglingBindings.join(", ")}`);
+  }
+
+  if (uncontainedText.length > 0) {
+    const msg = `Text elements without containerId: ${uncontainedText.join(", ")}`;
+    if (args.strictDiagram) errors.push(msg);
+    else warnings.push(msg);
+  }
+
+  if (textOverflow.length > 0) {
+    const msg = `Text larger than container: ${textOverflow.join("; ")}`;
+    if (args.strictDiagram) errors.push(msg);
+    else warnings.push(msg);
   }
 
   process.stdout.write(`[INFO] Scene: ${args.input}\n`);

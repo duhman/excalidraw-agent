@@ -68,7 +68,7 @@ Imported `.excalidraw` generated from Mermaid appears as a very tall single-colu
 3. regenerate with larger font size:
    - `node scripts/mermaid_to_scene.mjs --input diagram.mmd --output diagram.excalidraw --font-size 20 --regenerate-ids true --pretty true`
 4. lint output:
-   - `node scripts/scene_lint.mjs --input diagram.excalidraw`
+   - `node scripts/scene_lint.mjs --input diagram.excalidraw --strict-diagram true`
 5. if layout is still poor, manually arrange in Excalidraw after import
 
 ## Script Runtime Failures

@@ -51,7 +51,7 @@ Run scripts from this skill root or by absolute path.
 
 - `scripts/check_env.sh`
 - `scripts/mermaid_to_scene.mjs --input <mmd|-> --output <scene.excalidraw> --font-size <n> --regenerate-ids <true|false> --pretty <true|false>`
-- `scripts/scene_lint.mjs --input <scene.excalidraw>`
+- `scripts/scene_lint.mjs --input <scene.excalidraw> --strict-diagram <true|false>`
 - `scripts/library_merge.mjs --base <a.excalidrawlib> --other <b.excalidrawlib> --output <merged.excalidrawlib> --default-status <published|unpublished>`
 - `scripts/import_to_excalidraw.sh --input <path> --destination <plus|excalidraw> --kind <auto|scene|library> --mode <headed|headless> --session <name> --output-dir <path> --timeout-sec <n> --dry-run <true|false> --close-on-complete <true|false> --pwcli <path>`
 - `scripts/self_test.sh`
@@ -101,7 +101,7 @@ Run scripts from this skill root or by absolute path.
 2. Run conversion:
    - `node scripts/mermaid_to_scene.mjs --input diagram.mmd --output diagram.excalidraw --font-size 16 --regenerate-ids true --pretty true`
 3. Validate output:
-   - `node scripts/scene_lint.mjs --input diagram.excalidraw`
+   - `node scripts/scene_lint.mjs --input diagram.excalidraw --strict-diagram true`
 4. If parser fallback behavior appears, report which nodes were downgraded.
 5. If import layout is unreadable (for example tall single-column collapse), simplify labels/graph, reconvert, and expect a manual arrangement pass in Excalidraw.
 

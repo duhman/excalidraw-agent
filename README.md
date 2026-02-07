@@ -113,7 +113,7 @@ node scripts/mermaid_to_scene.mjs \
 ### 3) Lint resulting scene
 
 ```bash
-node scripts/scene_lint.mjs --input /tmp/flowchart.excalidraw
+node scripts/scene_lint.mjs --input /tmp/flowchart.excalidraw --strict-diagram true
 ```
 
 ### 4) Merge sample libraries
@@ -174,11 +174,15 @@ Purpose:
 
 - Validates scene payload integrity.
 - Detects malformed structure, duplicate IDs, dangling file references, and invisible/tiny element issues.
+- Optional strict diagram mode detects:
+  - arrows without start/end bindings
+  - text outside container sizing bounds
+  - containerless text in diagram outputs
 
 Usage:
 
 ```bash
-node scripts/scene_lint.mjs --input <file.excalidraw>
+node scripts/scene_lint.mjs --input <file.excalidraw> --strict-diagram <true|false>
 ```
 
 ### `scripts/library_merge.mjs`

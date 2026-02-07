@@ -25,10 +25,11 @@ node scripts/mermaid_to_scene.mjs \
 Then lint:
 
 ```bash
-node scripts/scene_lint.mjs --input /tmp/flowchart.excalidraw
+node scripts/scene_lint.mjs --input /tmp/flowchart.excalidraw --strict-diagram true
 ```
 
 The script attempts the official `parseMermaidToExcalidraw` + `convertToExcalidrawElements` path first. If the current Node runtime cannot load required Excalidraw internals, it falls back to deterministic flowchart parsing and emits a warning.
+Fallback output now enforces wrapped text in containers and bound connectors for better readability and editability.
 
 ## Supported Mermaid Scope
 
@@ -64,7 +65,7 @@ Recommended mitigation sequence:
    - `--font-size 20` or higher for presentation-oriented diagrams.
 4. Re-run conversion and lint:
    - `node scripts/mermaid_to_scene.mjs ...`
-   - `node scripts/scene_lint.mjs ...`
+   - `node scripts/scene_lint.mjs --strict-diagram true ...`
 5. If still unreadable, manually arrange nodes/connectors in Excalidraw after import.
 
 Use this rule of thumb:

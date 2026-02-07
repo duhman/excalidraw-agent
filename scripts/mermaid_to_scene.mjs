@@ -177,6 +177,105 @@ function parseNodeExpression(raw) {
   return { id, label: id, shape: "rectangle" };
 }
 
+function wrapLabelText(label, maxCharsPerLine) {
+  const words = String(label || "").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "";
+  const lines = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length <= maxCharsPerLine) {
+      current = candidate;
+      continue;
+    }
+    if (current) lines.push(current);
+    current = word;
+  }
+  if (current) lines.push(current);
+  return lines.join("\n");
+}
+
+function getNodeDimensions(node, fontSize) {
+  const baseWidth = node.shape === "diamond" ? 240 : node.shape === "ellipse" ? 250 : 260;
+  const baseHeight = node.shape === "diamond" ? 130 : 100;
+  const maxChars = node.shape === "diamond" ? 16 : 22;
+  const wrappedLabel = wrapLabelText(node.label || node.id, maxChars);
+  const lines = wrappedLabel.split("\n").filter(Boolean);
+  const maxLineLength = Math.max(...lines.map((line) => line.length), 1);
+  const textWidth = Math.round(maxLineLength * fontSize * 0.55);
+  const textHeight = Math.round(lines.length * fontSize * 1.25);
+  const width = Math.min(420, Math.max(baseWidth, textWidth + 44));
+  const height = Math.max(baseHeight, textHeight + 34);
+  return { width, height, wrappedLabel, textWidth, textHeight };
+}
+
+function computeFlowLevels(nodeOrder, edges) {
+  const adjacency = new Map();
+  const inDegree = new Map();
+  for (const nodeId of nodeOrder) {
+    adjacency.set(nodeId, []);
+    inDegree.set(nodeId, 0);
+  }
+  for (const edge of edges) {
+    if (!adjacency.has(edge.from) || !adjacency.has(edge.to)) continue;
+    adjacency.get(edge.from).push(edge.to);
+    inDegree.set(edge.to, (inDegree.get(edge.to) || 0) + 1);
+  }
+
+  const levels = new Map();
+  const queue = [];
+  for (const nodeId of nodeOrder) {
+    if ((inDegree.get(nodeId) || 0) === 0) {
+      levels.set(nodeId, 0);
+      queue.push(nodeId);
+    }
+  }
+
+  if (queue.length === 0 && nodeOrder.length > 0) {
+    levels.set(nodeOrder[0], 0);
+    queue.push(nodeOrder[0]);
+  }
+
+  while (queue.length > 0) {
+    const current = queue.shift();
+    const currentLevel = levels.get(current) || 0;
+    for (const next of adjacency.get(current) || []) {
+      const proposed = currentLevel + 1;
+      const existing = levels.get(next);
+      if (existing === undefined || proposed > existing) {
+        levels.set(next, proposed);
+      }
+      inDegree.set(next, (inDegree.get(next) || 1) - 1);
+      if ((inDegree.get(next) || 0) <= 0) {
+        queue.push(next);
+      }
+    }
+  }
+
+  let fallbackLevel = 0;
+  for (const nodeId of nodeOrder) {
+    if (!levels.has(nodeId)) {
+      levels.set(nodeId, fallbackLevel);
+      fallbackLevel += 1;
+    }
+  }
+
+  return levels;
+}
+
+function getEdgePoint(fromBox, toBox) {
+  const dx = toBox.cx - fromBox.cx;
+  const dy = toBox.cy - fromBox.cy;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx > 0
+      ? { x: fromBox.x + fromBox.width, y: fromBox.cy }
+      : { x: fromBox.x, y: fromBox.cy };
+  }
+  return dy > 0
+    ? { x: fromBox.cx, y: fromBox.y + fromBox.height }
+    : { x: fromBox.cx, y: fromBox.y };
+}
+
 function convertFallbackFromMermaid(mermaidText, fontSize) {
   const lines = mermaidText
     .split(/\r?\n/)
@@ -221,66 +320,105 @@ function convertFallbackFromMermaid(mermaidText, fontSize) {
   }
 
   const elements = [];
+  const levels = computeFlowLevels(nodeOrder, edges);
+  const levelBuckets = new Map();
+  const nodeOrderIndex = new Map(nodeOrder.map((nodeId, index) => [nodeId, index]));
+  for (const nodeId of nodeOrder) {
+    const level = levels.get(nodeId) || 0;
+    if (!levelBuckets.has(level)) levelBuckets.set(level, []);
+    levelBuckets.get(level).push(nodeId);
+  }
+  for (const bucket of levelBuckets.values()) {
+    bucket.sort((a, b) => (nodeOrderIndex.get(a) || 0) - (nodeOrderIndex.get(b) || 0));
+  }
+
   const centers = new Map();
+  const boxes = new Map();
+  const columnGap = 360;
+  const rowGap = 190;
+  const startX = 120;
+  const startY = 80;
 
-  nodeOrder.forEach((nodeId, index) => {
-    const node = nodes.get(nodeId);
-    const width = node.shape === "diamond" ? 190 : 230;
-    const height = node.shape === "ellipse" ? 96 : 88;
-    const x = 120;
-    const y = 80 + index * 150;
+  for (const [level, bucket] of Array.from(levelBuckets.entries()).sort((a, b) => a[0] - b[0])) {
+    bucket.forEach((nodeId, row) => {
+      const node = nodes.get(nodeId);
+      const dims = getNodeDimensions(node, fontSize);
+      const x = startX + level * columnGap;
+      const y = startY + row * rowGap;
+      const width = dims.width;
+      const height = dims.height;
+      const shapeId = `node-${node.id}`;
+      const shapeElement = elementBase(node.shape, shapeId, x, y, width, height, {
+        boundElements: [],
+      });
+      elements.push(shapeElement);
 
-    const shapeId = `node-${node.id}`;
-    elements.push(elementBase(node.shape, shapeId, x, y, width, height));
-
-    const label = node.label || node.id;
-    const textWidth = Math.max(40, Math.round(label.length * fontSize * 0.58));
-    const textHeight = Math.max(24, Math.round(fontSize * 1.4));
-    const textX = x + (width - textWidth) / 2;
-    const textY = y + (height - textHeight) / 2;
-
-    elements.push(
-      elementBase("text", `label-${node.id}`, textX, textY, textWidth, textHeight, {
-        text: label,
+      const textWidth = Math.min(width - 24, Math.max(48, dims.textWidth));
+      const textHeight = dims.textHeight;
+      const textX = x + (width - textWidth) / 2;
+      const textY = y + (height - textHeight) / 2;
+      const textId = `label-${node.id}`;
+      const textElement = elementBase("text", textId, textX, textY, textWidth, textHeight, {
+        text: dims.wrappedLabel,
         fontSize,
         fontFamily: 1,
         textAlign: "center",
         verticalAlign: "middle",
-        baseline: textHeight,
-        lineHeight: 1.2,
-        containerId: null,
-        originalText: label,
-      }),
-    );
+        baseline: Math.round(fontSize * 1.25),
+        lineHeight: 1.25,
+        containerId: shapeId,
+        originalText: dims.wrappedLabel,
+      });
+      elements.push(textElement);
+      shapeElement.boundElements.push({ id: textId, type: "text" });
 
-    centers.set(node.id, {
-      x: x + width / 2,
-      y: y + height / 2,
+      centers.set(node.id, {
+        x: x + width / 2,
+        y: y + height / 2,
+      });
+      boxes.set(node.id, {
+        shapeId,
+        x,
+        y,
+        width,
+        height,
+        cx: x + width / 2,
+        cy: y + height / 2,
+      });
     });
-  });
+  }
 
   edges.forEach((edge, index) => {
-    const from = centers.get(edge.from);
-    const to = centers.get(edge.to);
+    const from = boxes.get(edge.from);
+    const to = boxes.get(edge.to);
     if (!from || !to) return;
+    const start = getEdgePoint(from, to);
+    const end = getEdgePoint(to, from);
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const edgeId = `edge-${index + 1}-${edge.from}-${edge.to}`;
+    const edgeEl = elementBase("arrow", edgeId, start.x, start.y, Math.abs(dx), Math.abs(dy), {
+      points: [
+        [0, 0],
+        [dx, dy],
+      ],
+      startBinding: { elementId: from.shapeId, focus: 0, gap: 1 },
+      endBinding: { elementId: to.shapeId, focus: 0, gap: 1 },
+      startArrowhead: null,
+      endArrowhead: "triangle",
+      elbowed: false,
+      lastCommittedPoint: null,
+    });
+    elements.push(edgeEl);
 
-    const dx = to.x - from.x;
-    const dy = to.y - from.y;
-
-    elements.push(
-      elementBase("arrow", `edge-${index + 1}-${edge.from}-${edge.to}`, from.x, from.y, Math.abs(dx), Math.abs(dy), {
-        points: [
-          [0, 0],
-          [dx, dy],
-        ],
-        startBinding: null,
-        endBinding: null,
-        startArrowhead: null,
-        endArrowhead: "triangle",
-        elbowed: false,
-        lastCommittedPoint: null,
-      }),
-    );
+    const fromShape = elements.find((el) => el.id === from.shapeId);
+    const toShape = elements.find((el) => el.id === to.shapeId);
+    if (fromShape && Array.isArray(fromShape.boundElements)) {
+      fromShape.boundElements.push({ id: edgeId, type: "arrow" });
+    }
+    if (toShape && Array.isArray(toShape.boundElements)) {
+      toShape.boundElements.push({ id: edgeId, type: "arrow" });
+    }
   });
 
   return { elements, files: {} };
