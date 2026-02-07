@@ -1,0 +1,4 @@
+interface:
+  display_name: "Excalidraw Agent"
+  short_description: "Excalidraw integration and automation"
+  default_prompt: "Use $excalidraw-agent to integrate Excalidraw, convert Mermaid, validate scene/library workflows, and import generated files into an authenticated Excalidraw account session."

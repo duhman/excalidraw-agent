@@ -1,0 +1,41 @@
+{
+  "type": "excalidrawlib",
+  "version": 2,
+  "source": "https://agentskills.io",
+  "libraryItems": [
+    {
+      "id": "lib-item-a",
+      "status": "published",
+      "created": 1,
+      "elements": [
+        {
+          "type": "rectangle",
+          "version": 1,
+          "versionNonce": 2001,
+          "isDeleted": false,
+          "id": "lib-a-rect-1",
+          "fillStyle": "hachure",
+          "strokeWidth": 1,
+          "strokeStyle": "solid",
+          "roughness": 1,
+          "opacity": 100,
+          "angle": 0,
+          "x": 0,
+          "y": 0,
+          "strokeColor": "#1e1e1e",
+          "backgroundColor": "transparent",
+          "width": 140,
+          "height": 80,
+          "seed": 20001,
+          "groupIds": [],
+          "frameId": null,
+          "roundness": null,
+          "boundElements": null,
+          "updated": 1,
+          "link": null,
+          "locked": false
+        }
+      ]
+    }
+  ]
+}
