@@ -51,3 +51,23 @@ Report these fallbacks explicitly when they appear.
 - Treat parser output as untrusted input and normalize before use.
 - Preserve `files` returned by parser in final scene payload.
 - Prefer pretty JSON for human audit in generated artifacts.
+
+## Layout and Readability Limitations
+
+Mermaid conversion can produce layouts that are valid but difficult to read in Excalidraw, especially for dense graphs with long labels. A common failure mode is a narrow, very tall single-column scene.
+
+Recommended mitigation sequence:
+
+1. Reduce label length and avoid sentence-like node text.
+2. Reduce graph density (split one large flowchart into multiple smaller diagrams).
+3. Increase conversion font size for readability:
+   - `--font-size 20` or higher for presentation-oriented diagrams.
+4. Re-run conversion and lint:
+   - `node scripts/mermaid_to_scene.mjs ...`
+   - `node scripts/scene_lint.mjs ...`
+5. If still unreadable, manually arrange nodes/connectors in Excalidraw after import.
+
+Use this rule of thumb:
+
+- Script output is the structurally correct baseline.
+- Final communication diagrams may require manual visual refinement.

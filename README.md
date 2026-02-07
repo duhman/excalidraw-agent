@@ -16,12 +16,13 @@ This repository packages:
 4. [Quick Start](#quick-start)
 5. [Script Reference](#script-reference)
 6. [Account-Linked Import (Excalidraw / Excalidraw+)](#account-linked-import-excalidraw--excalidraw)
-7. [Client Compatibility (Codex, Claude Code, Cursor, Zed)](#client-compatibility-codex-claude-code-cursor-zed)
-8. [Validation and Quality Gates](#validation-and-quality-gates)
-9. [Troubleshooting](#troubleshooting)
-10. [Design Decisions and Guarantees](#design-decisions-and-guarantees)
-11. [Version Baseline](#version-baseline)
-12. [License](#license)
+7. [Diagram Readability Guidance](#diagram-readability-guidance)
+8. [Client Compatibility (Codex, Claude Code, Cursor, Zed)](#client-compatibility-codex-claude-code-cursor-zed)
+9. [Validation and Quality Gates](#validation-and-quality-gates)
+10. [Troubleshooting](#troubleshooting)
+11. [Design Decisions and Guarantees](#design-decisions-and-guarantees)
+12. [Version Baseline](#version-baseline)
+13. [License](#license)
 
 ## What This Skill Solves
 
@@ -152,6 +153,7 @@ Purpose:
 
 - Converts Mermaid input into Excalidraw scene JSON envelope (`elements`, `appState`, `files`).
 - Uses Excalidraw utils when available, with deterministic fallback normalization if runtime imports are unavailable.
+- Prioritizes conversion correctness over visual layout optimization.
 
 Usage:
 
@@ -163,6 +165,8 @@ node scripts/mermaid_to_scene.mjs \
   --regenerate-ids <true|false> \
   --pretty <true|false>
 ```
+
+If the imported result is hard to read (for example a very tall single-column layout), apply the guidance in [Diagram Readability Guidance](#diagram-readability-guidance).
 
 ### `scripts/scene_lint.mjs`
 
@@ -275,6 +279,24 @@ Manual checkpoints:
 1. After login, type `continue` in terminal.
 2. For Excalidraw+, confirm persisted workspace visibility by typing `yes`.
 
+## Diagram Readability Guidance
+
+Mermaid-to-Excalidraw conversion can produce technically correct but visually poor layouts for dense graphs (for example narrow, very tall diagrams with overlapping connectors). Use this process for readable outputs:
+
+1. Keep labels short (2-5 words where possible).
+2. Limit nodes per diagram; split into multiple diagrams when needed.
+3. Prefer a simplified first-pass flowchart for communication artifacts.
+4. Convert and lint:
+
+```bash
+node scripts/mermaid_to_scene.mjs --input diagram.mmd --output diagram.excalidraw --font-size 20 --regenerate-ids true --pretty true
+node scripts/scene_lint.mjs --input diagram.excalidraw
+```
+
+5. If layout is still poor after import, do a light manual arrangement pass in Excalidraw and save as the presentation artifact.
+
+Important: conversion scripts guarantee structural validity, not final presentation quality.
+
 ## Client Compatibility (Codex, Claude Code, Cursor, Zed)
 
 Compatibility model:
@@ -344,6 +366,7 @@ Fast triage order:
 2. Module resolution problems -> run from project dir with required Excalidraw packages
 3. Browser automation runner problems -> pass explicit `--pwcli`
 4. Account import issues -> run `--dry-run true` first, then headed with larger timeout
+5. Mermaid import unreadable -> simplify labels/graph, reconvert, then manually arrange if needed
 
 ## Design Decisions and Guarantees
 

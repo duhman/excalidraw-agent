@@ -55,6 +55,22 @@ Text element measurement/rendering issues in Brave.
 
 - disable aggressive anti-fingerprinting mode for affected origin
 
+## Mermaid Import Looks Collapsed or Unreadable
+
+### Symptom
+
+Imported `.excalidraw` generated from Mermaid appears as a very tall single-column flow, with tiny or crowded labels and poor readability.
+
+### Fix
+
+1. shorten node labels (prefer short phrases over sentences)
+2. split complex diagrams into smaller diagrams
+3. regenerate with larger font size:
+   - `node scripts/mermaid_to_scene.mjs --input diagram.mmd --output diagram.excalidraw --font-size 20 --regenerate-ids true --pretty true`
+4. lint output:
+   - `node scripts/scene_lint.mjs --input diagram.excalidraw`
+5. if layout is still poor, manually arrange in Excalidraw after import
+
 ## Script Runtime Failures
 
 ### Symptom

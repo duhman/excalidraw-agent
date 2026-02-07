@@ -103,6 +103,7 @@ Run scripts from this skill root or by absolute path.
 3. Validate output:
    - `node scripts/scene_lint.mjs --input diagram.excalidraw`
 4. If parser fallback behavior appears, report which nodes were downgraded.
+5. If import layout is unreadable (for example tall single-column collapse), simplify labels/graph, reconvert, and expect a manual arrangement pass in Excalidraw.
 
 ### 4) Merge and Normalize Libraries
 
